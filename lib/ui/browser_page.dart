@@ -60,8 +60,10 @@ class _BrowserPageState extends State<BrowserPage> {
   final _listFocus = FocusNode();
 
   bool get _busy => _transferTitle != null;
-  int get _currentParent => _path.isEmpty ? kFilesAndFoldersRoot : _path.last.id;
-  String get _here => _path.isEmpty ? (_storage?.description ?? '') : _path.last.name;
+  int get _currentParent =>
+      _path.isEmpty ? kFilesAndFoldersRoot : _path.last.id;
+  String get _here =>
+      _path.isEmpty ? (_storage?.description ?? '') : _path.last.name;
 
   @override
   void initState() {
@@ -150,8 +152,16 @@ class _BrowserPageState extends State<BrowserPage> {
       if (refreshStorages) {
         final list = await c.storages();
         final dev = _device!;
-        _device = MtpDeviceInfo(name: dev.name, vendor: dev.vendor, product: dev.product, storages: list);
-        _storage = list.firstWhere((x) => x.id == s.id, orElse: () => list.isNotEmpty ? list.first : s);
+        _device = MtpDeviceInfo(
+          name: dev.name,
+          vendor: dev.vendor,
+          product: dev.product,
+          storages: list,
+        );
+        _storage = list.firstWhere(
+          (x) => x.id == s.id,
+          orElse: () => list.isNotEmpty ? list.first : s,
+        );
       }
       final items = await c.list(_storage!.id, _currentParent);
       setState(() {
@@ -203,14 +213,19 @@ class _BrowserPageState extends State<BrowserPage> {
     final q = _search.text.trim().toLowerCase();
     final list = [
       for (final e in _entries)
-        if (q.isEmpty || e.name.toLowerCase().contains(q)) e
+        if (q.isEmpty || e.name.toLowerCase().contains(q)) e,
     ];
     int by(MtpEntry a, MtpEntry b) => switch (_sortBy) {
-          SortBy.name => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-          SortBy.size => a.size.compareTo(b.size),
-          SortBy.kind => fileKind(a.name, isFolder: a.isFolder).compareTo(fileKind(b.name, isFolder: b.isFolder)),
-          SortBy.modified => (a.modified ?? DateTime(0)).compareTo(b.modified ?? DateTime(0)),
-        };
+      SortBy.name => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      SortBy.size => a.size.compareTo(b.size),
+      SortBy.kind => fileKind(
+        a.name,
+        isFolder: a.isFolder,
+      ).compareTo(fileKind(b.name, isFolder: b.isFolder)),
+      SortBy.modified => (a.modified ?? DateTime(0)).compareTo(
+        b.modified ?? DateTime(0),
+      ),
+    };
     list.sort((a, b) {
       if (a.isFolder != b.isFolder) return a.isFolder ? -1 : 1;
       final r = by(a, b);
@@ -220,17 +235,22 @@ class _BrowserPageState extends State<BrowserPage> {
   }
 
   void _sort(SortBy s) => setState(() {
-        if (_sortBy == s) {
-          _ascending = !_ascending;
-        } else {
-          _sortBy = s;
-          _ascending = true;
-        }
-      });
+    if (_sortBy == s) {
+      _ascending = !_ascending;
+    } else {
+      _sortBy = s;
+      _ascending = true;
+    }
+  });
 
-  List<MtpEntry> get _selectedEntries => _entries.where((e) => _selected.contains(e.id)).toList();
+  List<MtpEntry> get _selectedEntries =>
+      _entries.where((e) => _selected.contains(e.id)).toList();
 
-  Future<void> _runTransfer(String title, bool uploading, Future<TransferResult> Function() job) async {
+  Future<void> _runTransfer(
+    String title,
+    bool uploading,
+    Future<TransferResult> Function() job,
+  ) async {
     setState(() {
       _transferTitle = title;
       _uploading = uploading;
@@ -245,8 +265,8 @@ class _BrowserPageState extends State<BrowserPage> {
       final msg = r.cancelled
           ? 'Transferência cancelada (${r.done} concluído(s)).'
           : r.failed.isEmpty
-              ? '${r.done} arquivo(s) transferido(s) com sucesso.'
-              : '${r.done} ok, ${r.failed.length} falha(s).';
+          ? '${r.done} arquivo(s) transferido(s) com sucesso.'
+          : '${r.done} ok, ${r.failed.length} falha(s).';
       _snack(msg, error: r.failed.isNotEmpty);
       if (r.failed.isNotEmpty) _showErrors(r.failed);
     } catch (e) {
@@ -264,7 +284,11 @@ class _BrowserPageState extends State<BrowserPage> {
   Future<void> _uploadPaths(List<String> paths) async {
     final c = _client, s = _storage;
     if (c == null || s == null || paths.isEmpty || _busy) return;
-    await _runTransfer('Enviando para "$_here"', true, () => c.upload(paths, s.id, _currentParent));
+    await _runTransfer(
+      'Enviando para "$_here"',
+      true,
+      () => c.upload(paths, s.id, _currentParent),
+    );
     await _reload(refreshStorages: true);
   }
 
@@ -284,7 +308,11 @@ class _BrowserPageState extends State<BrowserPage> {
     if (c == null || items.isEmpty || _busy) return;
     final dir = await getDirectoryPath(confirmButtonText: 'Salvar aqui');
     if (dir == null) return;
-    await _runTransfer('Baixando para o Mac', false, () => c.download(items, dir));
+    await _runTransfer(
+      'Baixando para o Mac',
+      false,
+      () => c.download(items, dir),
+    );
   }
 
   Future<void> _newFolder() async {
@@ -304,7 +332,12 @@ class _BrowserPageState extends State<BrowserPage> {
     final c = _client;
     final items = _selectedEntries;
     if (c == null || items.length != 1 || _busy) return;
-    final name = await _prompt('Renomear', 'Novo nome', initial: items.first.name, action: 'Renomear');
+    final name = await _prompt(
+      'Renomear',
+      'Novo nome',
+      initial: items.first.name,
+      action: 'Renomear',
+    );
     if (name == null || name.isEmpty || name == items.first.name) return;
     try {
       await c.rename(items.first.id, name);
@@ -323,16 +356,29 @@ class _BrowserPageState extends State<BrowserPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         icon: Icon(Icons.delete_outline_rounded, color: cs.error),
-        title: Text(items.length == 1 ? 'Apagar "${items.first.name}"?' : 'Apagar ${items.length} itens?'),
-        content: Text(items.any((e) => e.isFolder)
-            ? 'As pastas são apagadas com todo o conteúdo. Isso não pode ser desfeito.'
-            : 'Os arquivos são apagados do Switch. Isso não pode ser desfeito.'),
+        title: Text(
+          items.length == 1
+              ? 'Apagar "${items.first.name}"?'
+              : 'Apagar ${items.length} itens?',
+        ),
+        content: Text(
+          items.any((e) => e.isFolder)
+              ? 'As pastas são apagadas com todo o conteúdo. Isso não pode ser desfeito.'
+              : 'Os arquivos são apagados do Switch. Isso não pode ser desfeito.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
-              style: FilledButton.styleFrom(backgroundColor: cs.error, foregroundColor: cs.onError),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Apagar')),
+            style: FilledButton.styleFrom(
+              backgroundColor: cs.error,
+              foregroundColor: cs.onError,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Apagar'),
+          ),
         ],
       ),
     );
@@ -385,7 +431,10 @@ class _BrowserPageState extends State<BrowserPage> {
     final view = _view;
     if (view.isEmpty) return;
     final current = _anchorIndex ?? (delta > 0 ? -1 : view.length);
-    _select((current + delta).clamp(0, view.length - 1), range: HardwareKeyboard.instance.isShiftPressed);
+    _select(
+      (current + delta).clamp(0, view.length - 1),
+      range: HardwareKeyboard.instance.isShiftPressed,
+    );
   }
 
   void _openSelected() {
@@ -403,18 +452,39 @@ class _BrowserPageState extends State<BrowserPage> {
     final cs = Theme.of(context).colorScheme;
     final choice = await showMenu<String>(
       context: context,
-      position: RelativeRect.fromLTRB(position.dx, position.dy, position.dx, position.dy),
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx,
+        position.dy,
+      ),
       items: [
         if (count == 1 && e.isFolder)
-          const PopupMenuItem(value: 'open', child: _MenuRow(Icons.folder_open_rounded, 'Abrir')),
+          const PopupMenuItem(
+            value: 'open',
+            child: _MenuRow(Icons.folder_open_rounded, 'Abrir'),
+          ),
         PopupMenuItem(
-            value: 'download',
-            child: _MenuRow(Icons.download_rounded, count == 1 ? 'Baixar para o Mac' : 'Baixar $count itens')),
-        if (count == 1) const PopupMenuItem(value: 'rename', child: _MenuRow(Icons.edit_rounded, 'Renomear')),
+          value: 'download',
+          child: _MenuRow(
+            Icons.download_rounded,
+            count == 1 ? 'Baixar para o Mac' : 'Baixar $count itens',
+          ),
+        ),
+        if (count == 1)
+          const PopupMenuItem(
+            value: 'rename',
+            child: _MenuRow(Icons.edit_rounded, 'Renomear'),
+          ),
         const PopupMenuDivider(),
         PopupMenuItem(
-            value: 'delete',
-            child: _MenuRow(Icons.delete_outline_rounded, count == 1 ? 'Apagar' : 'Apagar $count itens', color: cs.error)),
+          value: 'delete',
+          child: _MenuRow(
+            Icons.delete_outline_rounded,
+            count == 1 ? 'Apagar' : 'Apagar $count itens',
+            color: cs.error,
+          ),
+        ),
       ],
     );
     switch (choice) {
@@ -434,15 +504,22 @@ class _BrowserPageState extends State<BrowserPage> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     final cs = Theme.of(context).colorScheme;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Row(children: [
-        Icon(error ? Icons.error_outline_rounded : Icons.check_circle_rounded,
-            color: error ? cs.onError : Colors.greenAccent.shade100, size: 20),
-        const SizedBox(width: 10),
-        Expanded(child: Text(msg)),
-      ]),
-      backgroundColor: error ? cs.error : null,
-    ));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              error ? Icons.error_outline_rounded : Icons.check_circle_rounded,
+              color: error ? cs.onError : Colors.greenAccent.shade100,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(msg)),
+          ],
+        ),
+        backgroundColor: error ? cs.error : null,
+      ),
+    );
   }
 
   void _showErrors(List<String> errors) {
@@ -452,18 +529,33 @@ class _BrowserPageState extends State<BrowserPage> {
         title: const Text('Falhas na transferência'),
         content: SizedBox(
           width: 500,
-          child: SingleChildScrollView(child: SelectableText(errors.join('\n\n'))),
+          child: SingleChildScrollView(
+            child: SelectableText(errors.join('\n\n')),
+          ),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK'))],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK'),
+          ),
+        ],
       ),
     );
   }
 
-  Future<String?> _prompt(String title, String label, {String initial = '', String action = 'OK'}) {
+  Future<String?> _prompt(
+    String title,
+    String label, {
+    String initial = '',
+    String action = 'OK',
+  }) {
     final ctrl = TextEditingController(text: initial)
       ..selection = TextSelection(
-          baseOffset: 0,
-          extentOffset: initial.contains('.') ? initial.lastIndexOf('.') : initial.length);
+        baseOffset: 0,
+        extentOffset: initial.contains('.')
+            ? initial.lastIndexOf('.')
+            : initial.length,
+      );
     return showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -478,8 +570,14 @@ class _BrowserPageState extends State<BrowserPage> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text(action)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
+            child: Text(action),
+          ),
         ],
       ),
     );
@@ -502,20 +600,22 @@ class _BrowserPageState extends State<BrowserPage> {
     }
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      body: Row(children: [
-        SizedBox(
-          width: 250,
-          child: Sidebar(
-            device: device,
-            current: _storage,
-            busy: _busy,
-            onSelectStorage: _selectStorage,
-            onDisconnect: _disconnect,
+      body: Row(
+        children: [
+          SizedBox(
+            width: 250,
+            child: Sidebar(
+              device: device,
+              current: _storage,
+              busy: _busy,
+              onSelectStorage: _selectStorage,
+              onDisconnect: _disconnect,
+            ),
           ),
-        ),
-        VerticalDivider(width: 1, color: cs.outlineVariant),
-        Expanded(child: _buildMain(context)),
-      ]),
+          VerticalDivider(width: 1, color: cs.outlineVariant),
+          Expanded(child: _buildMain(context)),
+        ],
+      ),
     );
   }
 
@@ -528,92 +628,121 @@ class _BrowserPageState extends State<BrowserPage> {
         const SingleActivator(LogicalKeyboardKey.keyA, meta: true): _selectAll,
         const SingleActivator(LogicalKeyboardKey.escape): _clearSelection,
         const SingleActivator(LogicalKeyboardKey.arrowUp, meta: true): _goUp,
-        const SingleActivator(LogicalKeyboardKey.arrowDown, meta: true): _openSelected,
+        const SingleActivator(LogicalKeyboardKey.arrowDown, meta: true):
+            _openSelected,
         const SingleActivator(LogicalKeyboardKey.enter): _openSelected,
-        const SingleActivator(LogicalKeyboardKey.arrowDown): () => _moveSelection(1),
-        const SingleActivator(LogicalKeyboardKey.arrowUp): () => _moveSelection(-1),
-        const SingleActivator(LogicalKeyboardKey.arrowDown, shift: true): () => _moveSelection(1),
-        const SingleActivator(LogicalKeyboardKey.arrowUp, shift: true): () => _moveSelection(-1),
-        const SingleActivator(LogicalKeyboardKey.backspace, meta: true): _delete,
+        const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+            _moveSelection(1),
+        const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+            _moveSelection(-1),
+        const SingleActivator(LogicalKeyboardKey.arrowDown, shift: true): () =>
+            _moveSelection(1),
+        const SingleActivator(LogicalKeyboardKey.arrowUp, shift: true): () =>
+            _moveSelection(-1),
+        const SingleActivator(LogicalKeyboardKey.backspace, meta: true):
+            _delete,
         const SingleActivator(LogicalKeyboardKey.delete): _delete,
-        const SingleActivator(LogicalKeyboardKey.keyR, meta: true): () => _reload(refreshStorages: true),
-        const SingleActivator(LogicalKeyboardKey.keyN, meta: true, shift: true): _newFolder,
-        const SingleActivator(LogicalKeyboardKey.keyO, meta: true): _pickAndUploadFiles,
+        const SingleActivator(LogicalKeyboardKey.keyR, meta: true): () =>
+            _reload(refreshStorages: true),
+        const SingleActivator(LogicalKeyboardKey.keyN, meta: true, shift: true):
+            _newFolder,
+        const SingleActivator(LogicalKeyboardKey.keyO, meta: true):
+            _pickAndUploadFiles,
       },
       child: Focus(
         focusNode: _listFocus,
         autofocus: true,
-        child: Stack(children: [
-          Column(children: [
-            BrowserToolbar(
-              storageName: _storage?.description ?? '',
-              path: [for (final c in _path) c.name],
-              canGoUp: _path.isNotEmpty && !_busy,
-              enabled: enabled,
-              loading: _loading,
-              search: _search,
-              onSearchChanged: () => setState(() {}),
-              onGoUp: _goUp,
-              onGoTo: _goTo,
-              onRefresh: () => _reload(refreshStorages: true),
-              onNewFolder: _newFolder,
-              onUploadFiles: _pickAndUploadFiles,
-              onUploadFolder: _pickAndUploadFolder,
-            ),
-            if (_error != null) _ErrorStrip(message: _error!, onClose: () => setState(() => _error = null)),
-            SelectionBar(
-              selected: sel,
-              enabled: enabled,
-              onDownload: _download,
-              onRename: _rename,
-              onDelete: _delete,
-              onClear: _clearSelection,
-            ),
-            Expanded(
-              child: DropTarget(
-                enable: enabled,
-                onDragEntered: (_) => setState(() => _dragging = true),
-                onDragExited: (_) => setState(() => _dragging = false),
-                onDragDone: (d) {
-                  setState(() => _dragging = false);
-                  _uploadPaths(d.files.map((f) => f.path).toList());
-                },
-                child: Stack(children: [
-                  FileList(
-                    entries: view,
-                    selected: _selected,
-                    sortBy: _sortBy,
-                    ascending: _ascending,
-                    loading: _loading,
-                    filtering: _search.text.trim().isNotEmpty,
-                    onSort: _sort,
-                    onTap: _onRowTap,
-                    onOpen: _openFolder,
-                    onContextMenu: _showContextMenu,
-                    onBackgroundTap: _clearSelection,
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                BrowserToolbar(
+                  storageName: _storage?.description ?? '',
+                  path: [for (final c in _path) c.name],
+                  canGoUp: _path.isNotEmpty && !_busy,
+                  enabled: enabled,
+                  loading: _loading,
+                  search: _search,
+                  onSearchChanged: () => setState(() {}),
+                  onGoUp: _goUp,
+                  onGoTo: _goTo,
+                  onRefresh: () => _reload(refreshStorages: true),
+                  onNewFolder: _newFolder,
+                  onUploadFiles: _pickAndUploadFiles,
+                  onUploadFolder: _pickAndUploadFolder,
+                ),
+                if (_error != null)
+                  _ErrorStrip(
+                    message: _error!,
+                    onClose: () => setState(() => _error = null),
                   ),
-                  if (_loading)
-                    const Positioned(top: 0, left: 0, right: 0, child: LinearProgressIndicator(minHeight: 2)),
-                  if (_dragging) Positioned.fill(child: DropOverlay(target: _here)),
-                ]),
-              ),
+                SelectionBar(
+                  selected: sel,
+                  enabled: enabled,
+                  onDownload: _download,
+                  onRename: _rename,
+                  onDelete: _delete,
+                  onClear: _clearSelection,
+                ),
+                Expanded(
+                  child: DropTarget(
+                    enable: enabled,
+                    onDragEntered: (_) => setState(() => _dragging = true),
+                    onDragExited: (_) => setState(() => _dragging = false),
+                    onDragDone: (d) {
+                      setState(() => _dragging = false);
+                      _uploadPaths(d.files.map((f) => f.path).toList());
+                    },
+                    child: Stack(
+                      children: [
+                        FileList(
+                          entries: view,
+                          selected: _selected,
+                          sortBy: _sortBy,
+                          ascending: _ascending,
+                          loading: _loading,
+                          filtering: _search.text.trim().isNotEmpty,
+                          onSort: _sort,
+                          onTap: _onRowTap,
+                          onOpen: _openFolder,
+                          onContextMenu: _showContextMenu,
+                          onBackgroundTap: _clearSelection,
+                        ),
+                        if (_loading)
+                          const Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            child: LinearProgressIndicator(minHeight: 2),
+                          ),
+                        if (_dragging)
+                          Positioned.fill(child: DropOverlay(target: _here)),
+                      ],
+                    ),
+                  ),
+                ),
+                _StatusBar(
+                  entries: _entries,
+                  shown: view.length,
+                  storage: _storage,
+                ),
+              ],
             ),
-            _StatusBar(entries: _entries, shown: view.length, storage: _storage),
-          ]),
-          if (_busy)
-            Positioned(
-              right: 16,
-              bottom: 40,
-              width: 380,
-              child: TransferCard(
-                title: _transferTitle!,
-                uploading: _uploading,
-                progress: _progress,
-                speed: _speed,
-                onCancel: () => _client?.cancelTransfer(),
+            if (_busy)
+              Positioned(
+                right: 16,
+                bottom: 40,
+                width: 380,
+                child: TransferCard(
+                  title: _transferTitle!,
+                  uploading: _uploading,
+                  progress: _progress,
+                  speed: _speed,
+                  onCancel: () => _client?.cancelTransfer(),
+                ),
               ),
-            ),
-        ]),
+          ],
+        ),
       ),
     );
   }
@@ -626,11 +755,13 @@ class _MenuRow extends StatelessWidget {
   final Color? color;
 
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 10),
-        Text(label, style: TextStyle(color: color)),
-      ]);
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, size: 18, color: color),
+      const SizedBox(width: 10),
+      Text(label, style: TextStyle(color: color)),
+    ],
+  );
 }
 
 class _ErrorStrip extends StatelessWidget {
@@ -644,22 +775,45 @@ class _ErrorStrip extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-      decoration: BoxDecoration(color: cs.errorContainer, borderRadius: BorderRadius.circular(10)),
-      child: Row(children: [
-        Icon(Icons.error_outline_rounded, color: cs.onErrorContainer, size: 20),
-        const SizedBox(width: 10),
-        Expanded(child: SelectableText(message, style: TextStyle(color: cs.onErrorContainer))),
-        IconButton(
+      decoration: BoxDecoration(
+        color: cs.errorContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.error_outline_rounded,
+            color: cs.onErrorContainer,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: SelectableText(
+              message,
+              style: TextStyle(color: cs.onErrorContainer),
+            ),
+          ),
+          IconButton(
             tooltip: 'Fechar',
             onPressed: onClose,
-            icon: Icon(Icons.close_rounded, size: 18, color: cs.onErrorContainer)),
-      ]),
+            icon: Icon(
+              Icons.close_rounded,
+              size: 18,
+              color: cs.onErrorContainer,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _StatusBar extends StatelessWidget {
-  const _StatusBar({required this.entries, required this.shown, required this.storage});
+  const _StatusBar({
+    required this.entries,
+    required this.shown,
+    required this.storage,
+  });
   final List<MtpEntry> entries;
   final int shown;
   final MtpStorage? storage;
@@ -669,7 +823,9 @@ class _StatusBar extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final folders = entries.where((e) => e.isFolder).length;
     final files = entries.length - folders;
-    final size = entries.where((e) => !e.isFolder).fold<int>(0, (s, e) => s + e.size);
+    final size = entries
+        .where((e) => !e.isFolder)
+        .fold<int>(0, (s, e) => s + e.size);
     final style = TextStyle(fontSize: 12, color: cs.onSurfaceVariant);
     final s = storage;
     return Container(
@@ -679,25 +835,51 @@ class _StatusBar extends StatelessWidget {
         color: cs.surfaceContainerLow,
         border: Border(top: BorderSide(color: cs.outlineVariant)),
       ),
-      child: Row(children: [
-        Text(
-          [
-            if (shown != entries.length) '$shown de ${entries.length} itens',
-            if (shown == entries.length) '${entries.length} itens',
-            if (folders > 0) '$folders pasta${folders == 1 ? '' : 's'}',
-            if (files > 0) '$files arquivo${files == 1 ? '' : 's'} · ${formatBytes(size)}',
-          ].join('  ·  '),
-          style: style,
-        ),
-        const Spacer(),
-        Icon(Icons.upload_rounded, size: 14, color: cs.onSurfaceVariant),
-        const SizedBox(width: 4),
-        Text('Arraste arquivos do Finder para enviar', style: style),
-        if (s != null && s.maxCapacity > 0) ...[
-          const SizedBox(width: 16),
-          Text('${formatBytes(s.freeBytes)} livres', style: style),
-        ],
-      ]),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final roomy = c.maxWidth > 640;
+          return Row(
+            children: [
+              Flexible(
+                child: Text(
+                  [
+                    if (shown != entries.length)
+                      '$shown de ${entries.length} itens',
+                    if (shown == entries.length) '${entries.length} itens',
+                    if (folders > 0) '$folders pasta${folders == 1 ? '' : 's'}',
+                    if (files > 0)
+                      '$files arquivo${files == 1 ? '' : 's'} · ${formatBytes(size)}',
+                  ].join('  ·  '),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: style,
+                ),
+              ),
+              const Spacer(),
+              if (roomy) ...[
+                Icon(
+                  Icons.upload_rounded,
+                  size: 14,
+                  color: cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    'Arraste do Finder para enviar',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: style,
+                  ),
+                ),
+              ],
+              if (s != null && s.maxCapacity > 0) ...[
+                const SizedBox(width: 16),
+                Text('${formatBytes(s.freeBytes)} livres', style: style),
+              ],
+            ],
+          );
+        },
+      ),
     );
   }
 }

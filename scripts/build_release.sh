@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Gera "Switch MTP.app" em modo release com libmtp + libusb embutidas,
-# para rodar em Macs sem Homebrew. Uso: ./scripts/build_release.sh
+# para rodar em Macs sem Homebrew.
+# Uso: ./scripts/build_release.sh [versão]   (ex.: 1.2.0; sem versão, usa a do pubspec.yaml)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -9,7 +10,12 @@ MTP="$BREW/opt/libmtp/lib/libmtp.9.dylib"
 USB="$BREW/opt/libusb/lib/libusb-1.0.0.dylib"
 [[ -f "$MTP" ]] || { echo "Instale a libmtp: brew install libmtp"; exit 1; }
 
-flutter build macos --release
+VERSION="${1:-}"
+if [[ -n "$VERSION" ]]; then
+  flutter build macos --release --build-name="$VERSION"
+else
+  flutter build macos --release
+fi
 
 APP="build/macos/Build/Products/Release/Switch MTP.app"
 FW="$APP/Contents/Frameworks"

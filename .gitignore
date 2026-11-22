@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Instaladores gerados por scripts/build_dmg.sh
+/dist/

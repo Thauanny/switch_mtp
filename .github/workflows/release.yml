@@ -1,0 +1,96 @@
+# Publica uma versão: ao enviar uma tag "v1.2.3", compila o app em Mac com chip Apple e em
+# Mac Intel, gera os instaladores .dmg e cria a Release no GitHub com eles para download.
+#
+#   git tag v1.2.3 && git push origin v1.2.3
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versão (ex.: 1.2.3) — a tag v<versão> é criada na Release'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: dmg (${{ matrix.arch }})
+    strategy:
+      matrix:
+        include:
+          - runner: macos-15        # chip Apple (arm64)
+            arch: apple-silicon
+          - runner: macos-15-intel  # Intel (x86_64)
+            arch: intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Versão
+        id: v
+        run: |
+          V="${{ github.event.inputs.version }}"
+          [ -z "$V" ] && V="${GITHUB_REF_NAME#v}"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: libmtp
+        run: brew install libmtp
+
+      - name: Testes
+        run: |
+          flutter pub get
+          flutter test
+
+      - name: Gerar .dmg
+        run: ./scripts/build_dmg.sh "${{ steps.v.outputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dmg-${{ matrix.arch }}
+          path: dist/*.dmg
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Versão
+        id: v
+        run: |
+          V="${{ github.event.inputs.version }}"
+          [ -z "$V" ] && V="${GITHUB_REF_NAME#v}"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.v.outputs.version }}
+          name: Switch MTP ${{ steps.v.outputs.version }}
+          files: dist/*.dmg
+          generate_release_notes: true
+          body: |
+            ## Download
+
+            | Seu Mac | Arquivo |
+            |---|---|
+            | Chip Apple (M1, M2, M3, M4…) | `Switch-MTP-${{ steps.v.outputs.version }}-apple-silicon.dmg` |
+            | Intel | `Switch-MTP-${{ steps.v.outputs.version }}-intel.dmg` |
+
+            Para saber qual é o seu: menu  › **Sobre este Mac** › "Chip" (Apple) ou "Processador" (Intel).
+            Requer macOS 15 (Sequoia) ou mais novo.
+
+            **Primeira abertura:** o app não é assinado com um certificado da Apple, então o macOS
+            bloqueia na primeira vez. Arraste o app para Aplicativos, tente abrir e depois vá em
+            **Ajustes do Sistema › Privacidade e Segurança › Abrir Mesmo Assim**. Veja o README.
